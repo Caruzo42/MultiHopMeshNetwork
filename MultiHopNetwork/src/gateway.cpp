@@ -21,6 +21,8 @@ void handle(Message &msg, uint8_t from)
         gateway.addNode(gateway.getNextNetworkID(), connectHeader->uuid);
         Message ackMessage = createConnackMessage(msg, networkID);
         gatewayNetwork.sendMessage(from, ackMessage);
+        displayHandler.displaySentControlPacket(ackMessage.header.controlPacketType);
+
         break;
     }
 
@@ -32,6 +34,7 @@ void handle(Message &msg, uint8_t from)
         {
             Message ackMessage = createPubackMessage(msg);
             gatewayNetwork.sendMessage(from, ackMessage);
+            displayHandler.displaySentControlPacket(ackMessage.header.controlPacketType);
         }
 
         // TODO @GateWay: DO SOMETHING WITH RECEIVED MESSAGE
@@ -99,16 +102,6 @@ void setup()
 void loop()
 {
     gatewayNetwork.loop();
-
-    if (millis() > nextMsgTime)
-    {
-        // TODO @UPDATE-GROUP: Send update.
-        std::string content = "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam volup";
-        std::vector<uint8_t> contentVector(content.begin(), content.end());
-        UpdateBlock block = createUpdateBlock(1, 2, 0, contentVector);
-        broadcastUpdate(block);
-        nextMsgTime = millis() + INTERVAL;
-    }
 }
 
 Gateway::Gateway() : nextNetworkID(1) {}

@@ -17,6 +17,7 @@ public:
     void displayInstructions(int timeLeft);
     void clearScreen();
     void displayMessage(bool received, uint8_t from, uint8_t to, Message &msg);
+    void displaySentControlPacket(ControlPacketType controlPacketType);
     void displayNodeId(uint8_t nodeId);
     void init();
 

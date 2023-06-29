@@ -20,6 +20,7 @@
 #include "protocol_common.h"
 #include "variable_headers.h"
 #include "display.h"
+#include "measurements.h"
 
 void handle(Message &msg, uint8_t from);
 void generateUUID(byte *uuid);

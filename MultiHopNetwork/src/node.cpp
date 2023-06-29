@@ -1,9 +1,9 @@
 #include "node.h"
 
-#define INTERVAL 8000
 unsigned long nextMsgTime;
 
 MeshNetwork network(HARDCODED_NETWORK_ID ? HARDCODED_NETWORK_ID : INITIAL_NODE_ADDRESS, handle, handleUpdateMessage);
+Measurements measurements;
 
 std::array<uint8_t, 16> uuid;
 
@@ -66,24 +66,24 @@ void loop()
         {
             Message msg = createConnectionMessage(uuid);
             network.sendMessage(GATEWAY_ADDRESS, msg);
+            displayHandler.displaySentControlPacket(msg.header.controlPacketType);
             connectStartTime = millis();
         }
     }
     else if (millis() > nextMsgTime)
     {
-        // Message message = createPublishMessage("v1/backend/measurements", 1234, "lorem ipsum dolor sit amet oder so", false, false, 1);
+        Message message = createPublishMessage("v1/backend/measurements", 1234, "measurement: " + std::to_string(measurements.getRandomBatteryLevel()), false, false, 1);
 
-        // try
-        // {
-        //     network.sendMessage(GATEWAY_ADDRESS, message);
-        // }
-        // catch (std::exception e)
-        // {
-        //     Serial.println(e.what());
-        // }
-        nextMsgTime += INTERVAL;
-
-        requestMissingPacket(0);
+        try
+        {
+            network.sendMessage(GATEWAY_ADDRESS, message);
+            displayHandler.displaySentControlPacket(message.header.controlPacketType);
+        }
+        catch (std::exception e)
+        {
+            Serial.println(e.what());
+        }
+        nextMsgTime += NODE_PUBLISH_INTERVAL;
     }
     network.loop();
 }
