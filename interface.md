@@ -1,35 +1,70 @@
 # Interface Specification
 
-A Packet is sent via the mesh network defined in the 'Radiohead' library (http://www.airspayce.com/mikem/arduino/RadioHead/index.html?utm_source=platformio&utm_medium=piohome) by Mike McCauley.
+This document describes the protocol used for communication over the mesh network defined in the 'Radiohead' library (http://www.airspayce.com/mikem/arduino/RadioHead/index.html?utm_source=platformio&utm_medium=piohome) by Mike McCauley.
 
-## 1.  Packet Structure
+## 1. Security
 
-A Packet is composed of the following (similar to MQTT):
+The current version of the protocol does not include any security measures at the network layer. Therefore, anyone can potentially use the existing Radiohead network for communication over wider distances. However, on the application layer, nodes should be authenticated by the gateway upon sending their initial CONNECT request.
 
-- Fixed Header (2 Byte)
-    - Control Packet Type (4 Bit, defined below)
-    - Control Flags (4 Bit)
-    - Packet Length (1 Byte, including header and payload)
-- Variable Header
-    - depending on Packet Type (defined below)
-- Payload 
-    - depending on Packet Type (defined below)
+## 2. Topics
 
-### 1.1 Fixed Header
+The protocol supports the following topics:
 
-#### 1.1.1 Control Packet Type
+### 2.1 `v1/backend/measurements`
+
+The payload for this topic includes the timestamp, sender UUID, and content of type and value. The payload is structured as follows:
+
+```json
+{
+    "timestamp": <unix-timestamp>,
+    "sender_uuid": <integer>,
+    "content": {
+        "type": <string>,
+        "value": <string>
+    }
+}
+```
+
+### 2.2 `v1/updates/missing`
+
+The payload for this topic includes the index of the missing block. The payload is structured as follows:
+
+```json
+{
+    "content": {
+        "missingBlockIndex": <int>
+    }
+}
+```
+
+## 3. OTA-Updates
+
+Over-the-air (OTA) updates should be initiated by the Gateway (Node 0). Upon receiving an update packet, nodes in the network should broadcast said packet exactly once. If there are packets missing, the node should request those packets using the relevant topic.
+
+## 4. Packet Structure
+
+The Packet structure in this protocol is similar to MQTT and is composed of the following sections:
+
+### 4.1 Fixed Header (2 Bytes)
+The fixed header consists of the Control Packet Type (4 Bit), Control Flags (4 Bit), and the Packet Length (1 Byte, including the header and payload).
+
+#### 4.1.1 Control Packet Type
+
+The control packet type specifies the type of packet being sent. The available packet types are as follows:
 
 | Name       | Value | Direction                       | Description                              | Usage in WaldWW           | Variable Header  | Payload          |
 |------------|:-----:|---------------------------------|------------------------------------------|---------------------------|------------------|------------------|
-| CONNECT    | 1     | Node -> Gateway                 | Connection Request                       | Initial Connection        | [Required](#L43) | None             |
-| CONNACK    | 2     | Gateway -> Node                 | Connection Acknowledgement               | Initial Connection        | [Required](#L48) | None             |
-| PUBLISH    | 3     | Node -> Gateway Gateway -> Node | Publish Packet                           | Health-Ping, Measurements | [Required](#L61) | [Required](#L102)|
-| PUBACK     | 4     | Node -> Gateway Gateway -> Node | Publish Acknowledgement (QoS Lvl 1 only) | Measurements              | [Required](#L71) | None             |
-| SUBSCRIBE  | 8     | Node -> Gateway                 | Subscribe Request                        | None                      | [Required](#L79) | None             |
-| SUBACK     | 9     | Gateway -> Node                 | Subscribe Acknowledgement                | None                      | [Required](#L89) | None             |
-| DISCONNECT | 14    | Node -> Gateway                 | Disconnect Information                   | After Update                    | None             | None             |
+| CONNECT    | 1     | Node -> Gateway                 | Connection Request                       | Initial Connection        | [Required](#L81) | None             |
+| CONNACK    | 2     | Gateway -> Node                 | Connection Acknowledgement               | Initial Connection        | [Required](#L90) | None             |
+| PUBLISH    | 3     | Node -> Gateway Gateway -> Node | Publish Packet                           | Health-Ping, Measurements | [Required](#L109) | [Required](#L102)|
+| PUBACK     | 4     | Node -> Gateway Gateway -> Node | Publish Acknowledgement (QoS Lvl 1 only) | Measurements              | [Required](#L119) | None             |
+| SUBSCRIBE  | 8     | Node -> Gateway                 | Subscribe Request                        | None                      | [Required](#L127) | None             |
+| SUBACK     | 9     | Gateway -> Node                 | Subscribe Acknowledgement                | None                      | [Required](#L137) | None             |
+| DISCONNECT | 14    | Node -> Gateway                 | Disconnect Information                   | After Update              | [Required](#L145)| None             |
 
-#### 1.1.2 Control Flags
+#### 4.1.2 Control Flags
+
+The control flags are used to control packet transmission. They are as follows:
 
 | Bits | Name   | Description                                                                        |
 |:----:|--------|------------------------------------------------------------------------------------|
@@ -37,51 +72,61 @@ A Packet is composed of the following (similar to MQTT):
 | 2    | QOS    | QoS Level. Only Level 0 and 1 supported for now.                                   |
 | 1    | RETAIN | Not implemented.                                                                   |
 
-### 1.2 Variable Header
+### 4.2 Variable Header
 
-#### 1.2.1 CONNECT
+The structure of the variable header is dependent on the packet type. The structures for each packet type are described below:
+
+Certainly, here are more detailed specifications for each variable header based on the packet type:
+
+#### 4.2.1 CONNECT
+
+The variable header for the CONNECT packet contains the following information:
 
 | Bytes | Name             | Description                           |
 |:----:|------------------|----------------------------------------|
 | 1    | Protocol Version | Protocol Version Number. 0x01 for now. |
 | 16   | UUID             | The UUID associated with the ESP32.    |
 
-#### 1.2.2 CONNNACK
+#### 4.2.2 CONNACK
+
+The variable header for the CONNACK packet includes the following data:
 
 | Bytes | Name                | Description                                                              |
 |:-----:|---------------------|--------------------------------------------------------------------------|
-|   1   | Connect Return code | Return Code answering the connection request. Defined below.             |
+|   1   | Connect Return code | Return Code responding to the connection request. Defined below.         |
 |   1   | Network ID          | New ID assigned to the connecting node for communication in the network. |
-| 16    | UUID                | The UUID of the Node the networkID has been assigned to                  |
+| 16    | UUID                | The UUID of the Node the network ID has been assigned to.                |
+
+The Connect Return code can take one of the following values:
 
 | Value    |     Return Code   Response                                    |     Description                                                                             |
 |:--------:|---------------------------------------------------------------|---------------------------------------------------------------------------------------------|
 |     0    |     0x00 Connection Accepted                                  |     Connection accepted.                                                                    |
-|     1    |     0x01 Connection Refused, unacceptable protocol version    |     The Server does not support the version of the protocol requested by the Client.        |
+|     1    |     0x01 Connection Refused, unacceptable protocol version    |     The Server does not support the level of the protocol requested by the Client.          |
 |     3    |     0x03 Connection Refused, Server unavailable               |     The Network Connection has been made but the server is unavailable.                     |
 |     5    |     0x05 Connection Refused, not authorized                   |     The Client is not authorized to connect.                                                |
 
-#### 1.2.3 PUBLISH
+#### 4.2.3 PUBLISH
 
-The Variable Header contains Topic Name and Packet-ID.
+The variable header for the PUBLISH packet includes the following fields:
 
 | Bytes | Content              | Description                                                       |
 |:-----:|----------------------|-------------------------------------------------------------------|
 | 1     | Length of Topic Name | The length of the following topic name in Bytes.                  |
 | ?     | Topic Name           | The name of the topic on which to publish the packet (in UTF-8).  |
-| 2     | Packet ID           | The unique identifier of the packet.                               |
+| 2     | Packet ID            | The unique identifier of the packet.                               |
 
-#### 1.2.4 PUBACK
+#### 4.2.4 PUBACK
 
-The Variable Header contains the Packet-ID of the packet being acknowledged. 
+The variable header for the PUBACK packet contains the Packet-ID of the packet being acknowledged:
 
 | Bytes | Content              | Description                                                       |
 |:-----:|----------------------|-------------------------------------------------------------------|
 | 2     | Packet ID            | The unique identifier of the approved packet.                     |
 
-#### 1.2.5 SUBSCRIBE
+#### 4.2.5 SUBSCRIBE
 
-The Variable Header contains Topic Name and Packet-ID.
+The variable header for the SUBSCRIBE packet contains the following fields:
 
 | Bytes | Content              | Description                                                       |
 |:-----:|----------------------|-------------------------------------------------------------------|
@@ -89,53 +134,23 @@ The Variable Header contains Topic Name and Packet-ID.
 | ?     | Topic Name           | The name of the topic to subscribe to (in UTF-8).                 |
 | 2     | Packet ID            | The unique identifier of the packet.                              |
 
-#### 1.2.6 SUBACK
+#### 4.2.6 SUBACK
 
-The Variable Header contains the Packet-ID of the packet being acknowledged. 
+The variable header for the SUBACK packet contains the Packet-ID of the packet being acknowledged:
 
 | Bytes | Content              | Description                                                       |
 |:-----:|----------------------|-------------------------------------------------------------------|
 | 2     | Packet ID            | The unique identifier of the approved subscribe-packet.           |
 
-#### 1.2.7 DISCONNECT
+#### 4.2.7 DISCONNECT
+
+The variable header for the DISCONNECT packet contains the UUID of the disconnecting device:
 
 | Bytes | Content | Description                           |
 |-------|---------|---------------------------------------|
 | 16    | UUID    | The UUID of the disconnecting device. |
 
 
-### 1.3 Payload 
+### 4.3 Payload
 
-_ONLY FOR THE PUBLISH CONTROL PACKET RELEVANT_
-
-The Payload contains the content of the published message in JSON-format. 
-
-
-
-## 2. Topics
-
-The following Topics are supported for now:
-
-```
-v1/backend/measurements
-```
-Payload:
-```
-{
-    "timestamp": !? not yet defined, as timers on the ESP32s would need to be synced somehow !?,
-    "sender_uuid": integer,
-    "content": {
-        "type": string,
-        "value": string
-    }
-}
-```
-
-## 3. Security
-
-None
-
-## 4. OTA-Updates
-
-
-    
+The payload structure is relevant only for the PUBLISH control packet. It contains the content of the published message in JSON format.
