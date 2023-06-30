@@ -114,3 +114,10 @@ void DisplayHandler::printMultiLine(String text, int16_t x, int16_t y)
     }
     display.display();
 }
+
+void DisplayHandler::displaySentControlPacket(ControlPacketType controlPacketType)
+{
+    display.drawLine(0, 48, display.width(), 48);
+    display.drawString(0, 50, "Sent: " + String(controlPacketTypeToString(controlPacketType).c_str()));
+    display.display();
+}

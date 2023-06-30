@@ -1,5 +1,4 @@
-#ifndef DISPLAY_H
-#define DISPLAY_H
+#pragma once
 
 #include <Arduino.h>
 #include <SSD1306.h>
@@ -17,6 +16,7 @@ public:
     void displayInstructions(int timeLeft);
     void clearScreen();
     void displayMessage(bool received, uint8_t from, uint8_t to, Message &msg);
+    void displaySentControlPacket(ControlPacketType controlPacketType);
     void displayNodeId(uint8_t nodeId);
     void init();
 
@@ -25,5 +25,3 @@ private:
     QRCode qrcode;
     void printMultiLine(String text, int16_t x, int16_t y);
 };
-
-#endif

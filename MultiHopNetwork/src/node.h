@@ -1,17 +1,10 @@
-#ifndef NODE_H
-#define NODE_H
+#pragma once
 
 #include <RHMesh.h>
 #include <RH_RF95.h>
 #include <SPI.h>
-#include <set>
 #include <Preferences.h>
-
-#include <iostream>
-#include <iomanip>
 #include <sstream>
-#include <string>
-#include <vector>
 #include <unordered_map>
 
 #include "network.h"
@@ -20,6 +13,7 @@
 #include "protocol_common.h"
 #include "variable_headers.h"
 #include "display.h"
+#include "measurements.h"
 
 void handle(Message &msg, uint8_t from);
 void generateUUID(byte *uuid);
@@ -31,5 +25,3 @@ void requestMissingPacket(uint16_t blockIndex);
 
 void setup();
 void loop();
-
-#endif

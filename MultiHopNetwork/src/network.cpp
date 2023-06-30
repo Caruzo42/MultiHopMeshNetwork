@@ -1,17 +1,18 @@
 #include "network.h"
 
-void MeshNetwork::setup()
+bool MeshNetwork::setup()
 {
     Serial.begin(9600);
-    Serial.print(F("initializing with network id "));
     SPI.begin(LLG_SCK, LLG_MISO, LLG_MOSI, LLG_CS);
     if (!manager.init())
     {
-        Serial.println(" init failed");
+        Serial.println("Initialization of network node failed.");
+        return false;
     }
     else
     {
-        Serial.println(" done");
+        Serial.print("Initializing network node with id: ");
+        Serial.println(manager.thisAddress());
     }
 
     rf95.setTxPower(10, false);
@@ -20,9 +21,11 @@ void MeshNetwork::setup()
 
     if (!rf95.setModemConfig(RH_RF95::Bw125Cr45Sf128))
     {
-        Serial.println(F("set config failed"));
+        Serial.println(F("Modem configuration failed."));
+        return false;
     }
-    Serial.println("RF95 ready");
+    Serial.println("Radio ready");
+    return true;
 }
 
 void MeshNetwork::loop()

@@ -1,10 +1,9 @@
 #include "gateway.h"
 
 MeshNetwork gatewayNetwork(GATEWAY_ADDRESS, handle);
-Gateway gateway;
+NodeManager nodeManager;
 DisplayHandler displayHandler;
 
-#define INTERVAL 8000
 unsigned long nextMsgTime;
 
 void handle(Message &msg, uint8_t from)
@@ -17,10 +16,12 @@ void handle(Message &msg, uint8_t from)
     case CONNECT:
     {
         ConnectHeader *connectHeader = static_cast<ConnectHeader *>(msg.variableHeader.get());
-        uint8_t networkID = gateway.getNextNetworkID();
-        gateway.addNode(gateway.getNextNetworkID(), connectHeader->uuid);
+        uint8_t networkID = nodeManager.getNextNetworkID();
+        nodeManager.addNode(nodeManager.getNextNetworkID(), connectHeader->uuid);
         Message ackMessage = createConnackMessage(msg, networkID);
         gatewayNetwork.sendMessage(from, ackMessage);
+        displayHandler.displaySentControlPacket(ackMessage.header.controlPacketType);
+
         break;
     }
 
@@ -32,6 +33,7 @@ void handle(Message &msg, uint8_t from)
         {
             Message ackMessage = createPubackMessage(msg);
             gatewayNetwork.sendMessage(from, ackMessage);
+            displayHandler.displaySentControlPacket(ackMessage.header.controlPacketType);
         }
 
         // TODO @GateWay: DO SOMETHING WITH RECEIVED MESSAGE
@@ -44,7 +46,7 @@ void handle(Message &msg, uint8_t from)
         // NetworkID (dont think you need it but whatever):
         uint8_t networkID = from;
         // UUID:
-        std::array<uint8_t, 16> uuid = gateway.getUUIDByNetworkID(networkID);
+        std::array<uint8_t, 16> uuid = nodeManager.getUUIDByNetworkID(networkID);
 
         if (topicName == "v1/updates/missing")
         {
@@ -79,7 +81,7 @@ void handle(Message &msg, uint8_t from)
     case DISCONNECT:
         DisconnectHeader *disconnectHeader = static_cast<DisconnectHeader *>(msg.variableHeader.get());
 
-        gateway.deleteNode(from);
+        nodeManager.deleteNode(from);
         break;
     }
 }
@@ -99,21 +101,11 @@ void setup()
 void loop()
 {
     gatewayNetwork.loop();
-
-    if (millis() > nextMsgTime)
-    {
-        // TODO @UPDATE-GROUP: Send update.
-        std::string content = "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam volup";
-        std::vector<uint8_t> contentVector(content.begin(), content.end());
-        UpdateBlock block = createUpdateBlock(1, 2, 0, contentVector);
-        broadcastUpdate(block);
-        nextMsgTime = millis() + INTERVAL;
-    }
 }
 
-Gateway::Gateway() : nextNetworkID(1) {}
+NodeManager::NodeManager() : nextNetworkID(1) {}
 
-bool Gateway::addNode(uint8_t networkID, std::array<uint8_t, 16> uuid)
+bool NodeManager::addNode(uint8_t networkID, std::array<uint8_t, 16> uuid)
 {
     for (auto it = connectedNodes.begin(); it != connectedNodes.end(); ++it)
     {
@@ -136,12 +128,12 @@ bool Gateway::addNode(uint8_t networkID, std::array<uint8_t, 16> uuid)
     return true;
 }
 
-uint8_t Gateway::getNextNetworkID() const
+uint8_t NodeManager::getNextNetworkID() const
 {
     return nextNetworkID;
 }
 
-bool Gateway::deleteNode(uint8_t networkID)
+bool NodeManager::deleteNode(uint8_t networkID)
 {
     auto it = connectedNodes.find(networkID);
     if (it == connectedNodes.end())
@@ -158,12 +150,12 @@ bool Gateway::deleteNode(uint8_t networkID)
     return true;
 }
 
-int Gateway::getConnectedNodesCount()
+int NodeManager::getConnectedNodesCount()
 {
     return connectedNodes.size();
 }
 
-std::array<uint8_t, 16> Gateway::getUUIDByNetworkID(uint8_t networkID)
+std::array<uint8_t, 16> NodeManager::getUUIDByNetworkID(uint8_t networkID)
 {
     return connectedNodes[networkID];
 }

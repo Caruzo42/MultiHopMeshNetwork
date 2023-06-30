@@ -1,9 +1,9 @@
 #include "node.h"
 
-#define INTERVAL 8000
 unsigned long nextMsgTime;
 
 MeshNetwork network(HARDCODED_NETWORK_ID ? HARDCODED_NETWORK_ID : INITIAL_NODE_ADDRESS, handle, handleUpdateMessage);
+Measurements measurements;
 
 std::array<uint8_t, 16> uuid;
 
@@ -13,7 +13,7 @@ DisplayHandler displayHandler;
 volatile bool buttonPressed = false;
 unsigned long connectStartTime;
 
-std::unordered_map<uint32_t, bool> receivedPackets;
+std::unordered_map<uint32_t, bool> rebroadcastedUpdatePackets; // Store update packets that have been rebroadcasted already to not spam the network.
 
 void setup()
 {
@@ -66,24 +66,25 @@ void loop()
         {
             Message msg = createConnectionMessage(uuid);
             network.sendMessage(GATEWAY_ADDRESS, msg);
+            displayHandler.displaySentControlPacket(msg.header.controlPacketType);
             connectStartTime = millis();
         }
     }
     else if (millis() > nextMsgTime)
     {
-        // Message message = createPublishMessage("v1/backend/measurements", 1234, "lorem ipsum dolor sit amet oder so", false, false, 1);
+        // TODO: Periodically fetch measurements and send them to the gateway.
+        Message message = createPublishMessage(MEASUREMENTS_TOPIC, 1234, "measurement: " + std::to_string(measurements.getRandomBatteryLevel()), false, false, 1);
 
-        // try
-        // {
-        //     network.sendMessage(GATEWAY_ADDRESS, message);
-        // }
-        // catch (std::exception e)
-        // {
-        //     Serial.println(e.what());
-        // }
-        nextMsgTime += INTERVAL;
-
-        requestMissingPacket(0);
+        try
+        {
+            network.sendMessage(GATEWAY_ADDRESS, message);
+            displayHandler.displaySentControlPacket(message.header.controlPacketType);
+        }
+        catch (std::exception e)
+        {
+            Serial.println(e.what());
+        }
+        nextMsgTime += NODE_PUBLISH_INTERVAL;
     }
     network.loop();
 }
@@ -102,7 +103,7 @@ void handle(Message &msg, uint8_t from)
     {
         ConnackHeader *connackHeader = static_cast<ConnackHeader *>(msg.variableHeader.get());
 
-        if (connackHeader->returnCode == ACCEPTED && uuid == connackHeader->uuid)
+        if (from == GATEWAY_ADDRESS && connackHeader->returnCode == ACCEPTED && uuid == connackHeader->uuid)
         {
             Preferences prefs;
             if (HARDCODED_NETWORK_ID)
@@ -154,7 +155,7 @@ void handleUpdateMessage(UpdateBlock updateBlock)
     uint32_t key = makeKey(updateBlock.versionNumber, updateBlock.blockIndex);
     if (!checkIfPreviouslyReceived(updateBlock.versionNumber, updateBlock.blockIndex))
     {
-        receivedPackets[key] = true;
+        rebroadcastedUpdatePackets[key] = true;
         network.broadcastUpdateBlock(updateBlock);
     }
 
@@ -164,7 +165,7 @@ void handleUpdateMessage(UpdateBlock updateBlock)
 bool checkIfPreviouslyReceived(uint16_t version, uint16_t blockIndex)
 {
     uint32_t key = makeKey(version, blockIndex);
-    return receivedPackets.find(key) != receivedPackets.end();
+    return rebroadcastedUpdatePackets.find(key) != rebroadcastedUpdatePackets.end();
 }
 
 uint32_t makeKey(uint16_t version, uint16_t blockIndex)
