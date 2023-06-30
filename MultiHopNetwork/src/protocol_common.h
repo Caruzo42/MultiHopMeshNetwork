@@ -1,13 +1,11 @@
-#ifndef PROTOCOL_COMMON_H
-#define PROTOCOL_COMMON_H
+#pragma once
 
-#include <Arduino.h>
+#include <SPI.h>
 #include <cstring>
-#include <variable_headers.h>
-#include <memory>
 #include <vector>
 
 #include "config.h"
+#include "variable_headers.h"
 
 struct FixedHeader
 {
@@ -39,8 +37,7 @@ struct UpdateBlock
     std::vector<uint8_t> blockContent;
 };
 
-Message
-createConnectionMessage(const std::array<uint8_t, 16> uuid);
+Message createConnectionMessage(const std::array<uint8_t, 16> uuid);
 
 Message createConnackMessage(const Message &msg, const uint8_t networkID, const ConnackReturnCode returnCode = ACCEPTED);
 
@@ -59,5 +56,3 @@ UpdateBlock parseUpdateBlock(const uint8_t *receivedPacket, size_t size);
 void serializeUpdateBlock(uint8_t *updatePacketLocation, size_t reservedSize, UpdateBlock updateBlock);
 
 UpdateBlock createUpdateBlock(uint16_t versionNumber, uint16_t numberOfBlocks, uint16_t blockIndex, std::vector<uint8_t> &blockContent);
-
-#endif

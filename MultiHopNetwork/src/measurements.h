@@ -1,5 +1,4 @@
-#ifndef MEASUREMENTS_H
-#define MEASUREMENTS_H
+#pragma once
 
 #include <cstdint>
 #include <random>
@@ -14,5 +13,3 @@ public:
 private:
     std::mt19937 gen;
 };
-
-#endif

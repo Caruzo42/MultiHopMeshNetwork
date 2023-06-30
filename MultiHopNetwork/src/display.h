@@ -1,5 +1,4 @@
-#ifndef DISPLAY_H
-#define DISPLAY_H
+#pragma once
 
 #include <Arduino.h>
 #include <SSD1306.h>
@@ -26,5 +25,3 @@ private:
     QRCode qrcode;
     void printMultiLine(String text, int16_t x, int16_t y);
 };
-
-#endif

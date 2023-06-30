@@ -1,9 +1,6 @@
-#ifndef VARIABLE_HEADER_H
-#define VARIABLE_HEADER_H
+#pragma once
 
 #include <string>
-
-#include <Arduino.h>
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
@@ -106,5 +103,3 @@ struct DisconnectHeader : VariableHeader
 };
 
 std::string controlPacketTypeToString(ControlPacketType ControlPacketType);
-
-#endif

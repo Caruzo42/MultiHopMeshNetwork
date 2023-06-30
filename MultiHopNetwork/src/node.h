@@ -1,17 +1,10 @@
-#ifndef NODE_H
-#define NODE_H
+#pragma once
 
 #include <RHMesh.h>
 #include <RH_RF95.h>
 #include <SPI.h>
-#include <set>
 #include <Preferences.h>
-
-#include <iostream>
-#include <iomanip>
 #include <sstream>
-#include <string>
-#include <vector>
 #include <unordered_map>
 
 #include "network.h"
@@ -32,5 +25,3 @@ void requestMissingPacket(uint16_t blockIndex);
 
 void setup();
 void loop();
-
-#endif
